@@ -4,20 +4,37 @@ import User from "../models/user.model.js"
 
 export const googleAuth = async (req,res) => {
     try {
-        const {name , email} = req.body
-        let user = await User.findOne({email})
-        if(!user){
-            user = await User.create({
-                name , 
-                email
-            })
+        const {name, email} = req.body || {}
+
+        // Basic input validation
+        if (!name || !email) {
+            return res.status(400).json({ message: 'Name and email are required' })
         }
-        let token = await genToken(user._id)
-        res.cookie("token" , token , {
-            http:true,
-            secure:true,
-            sameSite:"none",
-            maxAge:7 * 24 * 60 * 60 * 1000
+        // simple email regex
+        const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ message: 'Invalid email format' })
+        }
+
+        // Use an upsert to avoid a race condition between find and create
+        const user = await User.findOneAndUpdate(
+            { email },
+            { $setOnInsert: { name, email } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        )
+
+        // Generate token (genToken should throw on failure)
+        const token = await genToken(user._id)
+        if (!token) {
+            console.error('genToken returned falsy token for user:', user._id)
+            return res.status(500).json({ message: 'Failed to generate auth token' })
+        }
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
         return res.status(200).json(user)
