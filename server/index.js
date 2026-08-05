@@ -4,14 +4,6 @@ import connectDb from "./config/connectDb.js"
 import cookieParser from "cookie-parser"
 dotenv.config()
 import cors from "cors"
-
-// Startup sanity checks to help debug environment issues
-if (!process.env.JWT_SECRET) {
-  console.error('FATAL: JWT_SECRET is not set in environment. Auth will fail. Check server/.env')
-}
-if (!process.env.MONGODB_URL) {
-  console.error('FATAL: MONGODB_URL is not set in environment. DB connection will fail. Check server/.env')
-}
 import authRouter from "./routes/auth.route.js"
 import userRouter from "./routes/user.route.js"
 import interviewRouter from "./routes/interview.route.js"
